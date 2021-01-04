@@ -18,6 +18,13 @@ class TriviaTestCase(unittest.TestCase):
         self.database_path = "postgres://{}/{}".format('postgres','123','localhost:5432', self.database_name)
         setup_db(self.app, self.database_path)
 
+        self.new_question = {
+            'question': 'when was the kingdom established?',
+            'answer': 'september',
+            'difficulty': 4,
+            'category': 5
+        }
+
         # binds the app to the current context
         with self.app.app_context():
             self.db = SQLAlchemy()

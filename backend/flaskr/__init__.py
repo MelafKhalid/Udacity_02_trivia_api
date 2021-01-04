@@ -3,6 +3,7 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
+import sys
 
 from models import setup_db, Question, Category
 
@@ -145,49 +146,63 @@ def create_app(test_config=None):
 
   @app.route('/categories/<int:category_id>/questions', methods=['GET'])
   def retrieve_category_questions(category_id):
+    
+    result = Question.query.order_by(Question.id).filter_by(category=category_id).all()
+    formatted_result = [question.format() for question in result]
 
-    try:
-      result = Question.query.order_by(Question.id).filter_by(category=category_id).all()
-
-      if result:
-
-        return jsonify({
-          'success': True,
-          'questions': [question.format() for question in result],
-          'total_questions': len(result),
-          'current_category': [question.category for question in result]
-        })
-
-    except:
+    if len(formatted_result) == 0:
       abort(404)
+
+    category = Category.query.get(category_id).type
+
+    
+    return jsonify({
+      'success' : True,
+      'questions': formatted_result,
+      'total_questions': len(formatted_result),
+      'current_category' : category
+    })
 
 # A POST endpoint that take category and previous question parameters to get random questions within the given category to play the quiz.
   
   @app.route('/quizzes', methods=['POST'])
   def random_quiz():
+    body = request.get_json()
+
+    if body is None:
+      abort(422)
     
     try:
 
-      quiz_category = request.get_json().get('quiz_category')
+      quiz_category = body.get('quiz_category')
 
       if quiz_category is None:
         abort(404)
       
-      previous_questions = request.get_json().get('previous_questions')
+      previous_questions =body.get('previous_questions')
 
       if quiz_category['id'] == 0:
         questions = Question.query.all()
       else:
         questions = Question.query.filter_by(category=quiz_category['id']).all()
-      
-      total_questions =  [question.format() for question in questions if question.id not in previous_questions]
+
+      total_questions =  [question.format() for question in questions]
      
+      random_question = random.choice(total_questions)
+
+      if random_question['id'] in previous_questions:
+        random_question = random.choice(total_questions)
+
+      if len(previous_questions) == len(questions):
+        random_question = None
+
       return jsonify({
         'success':True,
-        'question': random.choice(total_questions)
+        'question': random_question
       })
 
     except:
+      print(sys.exc_info())
       abort(422)
 
  
@@ -216,5 +231,21 @@ def create_app(test_config=None):
       "error": 400,
       "message": "bad request"
       }), 400
+
+  @app.errorhandler(500)
+  def internal_error(error):
+    return jsonify({
+      "success": False,
+      "error": 500,
+      "message": "internal server error"
+    }), 500
+
+  @app.errorhandler(405)
+  def internal_error(error):
+    return jsonify({
+      "success": False,
+      "error": 405,
+      "message": "method not allowed"
+    }), 405
   
   return app

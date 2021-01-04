@@ -134,7 +134,7 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(data['current_category'], 'Science')
 
     def test_retrive_category_questions_failed(self):
-        res = self.client().get('/categories/3/questions')
+        res = self.client().get('/categories/1000/questions')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 404)
